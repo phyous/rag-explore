@@ -1,4 +1,7 @@
 
+Following along in:
+https://github.com/anthropics/anthropic-cookbook/blob/main/skills/retrieval_augmented_generation/guide.ipynb
+
 # 1. Basic RAG
 A basic RAG pipeline using a bare bones approach. This is sometimes called 'Naive RAG' by many in the industry. A basic RAG pipeline includes the following 3 steps:
 
