@@ -45,7 +45,7 @@ def answer_query_base(query, db):
     Answer the question now, and avoid providing preamble such as 'Here is the answer', etc
     """
     response = client.messages.create(
-        model="claude-3.5-haiku-latest",
+        model="claude-3-5-haiku-latest",
         max_tokens=2500,
         messages=[
             {"role": "user", "content": prompt}
@@ -54,7 +54,7 @@ def answer_query_base(query, db):
     )
     return response.content[0].text
 
-def preview_json(file_path, num_items=3):
+def preview_json(file_path, num_items=1):
     try:
         with open(file_path, 'r') as file:
             data = json.load(file)
@@ -80,40 +80,40 @@ def preview_json(file_path, num_items=3):
 
 preview_json('evaluation/docs_evaluation_dataset.json')
 
-# import pandas as pd
+import pandas as pd
 
-# avg_precision, avg_recall, avg_mrr, f1, precisions, recalls, mrrs = evaluate_retrieval(retrieve_base, eval_data, db)
-# e2e_accuracy, e2e_results = evaluate_end_to_end(answer_query_base, db, eval_data)
+avg_precision, avg_recall, avg_mrr, f1, precisions, recalls, mrrs = evaluate_retrieval(retrieve_base, eval_data, db)
+e2e_accuracy, e2e_results = evaluate_end_to_end(answer_query_base, db, eval_data)
 
-# # Create a DataFrame
-# df = pd.DataFrame({
-#     'question': [item['question'] for item in eval_data],
-#     'retrieval_precision': precisions,
-#     'retrieval_recall': recalls,
-#     'retrieval_mrr': mrrs,
-#     'e2e_correct': e2e_results
-# })
+# Create a DataFrame
+df = pd.DataFrame({
+    'question': [item['question'] for item in eval_data],
+    'retrieval_precision': precisions,
+    'retrieval_recall': recalls,
+    'retrieval_mrr': mrrs,
+    'e2e_correct': e2e_results
+})
 
-# # Save to CSV
-# df.to_csv('evaluation/csvs/evaluation_results_detailed.csv', index=False)
-# print("Detailed results saved to evaluation/csvs/evaluation_results_one.csv")
+# Save to CSV
+df.to_csv('evaluation/csvs/evaluation_results_detailed.csv', index=False)
+print("Detailed results saved to evaluation/csvs/evaluation_results_one.csv")
 
-# # Print the results
-# print(f"Average Precision: {avg_precision:.4f}")
-# print(f"Average Recall: {avg_recall:.4f}")
-# print(f"Average MRR: {avg_mrr:.4f}")
-# print(f"Average F1: {f1:.4f}")
-# print(f"End-to-End Accuracy: {e2e_accuracy:.4f}")
+# Print the results
+print(f"Average Precision: {avg_precision:.4f}")
+print(f"Average Recall: {avg_recall:.4f}")
+print(f"Average MRR: {avg_mrr:.4f}")
+print(f"Average F1: {f1:.4f}")
+print(f"End-to-End Accuracy: {e2e_accuracy:.4f}")
 
-# # Save the results to a file
-# with open('evaluation/json_results/evaluation_results_one.json', 'w') as f:
-#     json.dump({
-#         "name": "Basic RAG",
-#         "average_precision": avg_precision,
-#         "average_recall": avg_recall,
-#         "average_f1": f1,
-#         "average_mrr": avg_mrr,
-#         "end_to_end_accuracy": e2e_accuracy
-#     }, f, indent=2)
+# Save the results to a file
+with open('evaluation/json_results/evaluation_results_one.json', 'w') as f:
+    json.dump({
+        "name": "Basic RAG",
+        "average_precision": avg_precision,
+        "average_recall": avg_recall,
+        "average_f1": f1,
+        "average_mrr": avg_mrr,
+        "end_to_end_accuracy": e2e_accuracy
+    }, f, indent=2)
 
-# print("Evaluation complete. Results saved to evaluation_results_one.json, evaluation_results_one.csv")
+print("Evaluation complete. Results saved to evaluation_results_one.json, evaluation_results_one.csv")

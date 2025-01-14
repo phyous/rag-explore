@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 from src.helpers import create_client
 
-
 def calculate_mrr(retrieved_links: List[str], correct_links: Set[str]) -> float:
     for i, link in enumerate(retrieved_links, 1):
         if link in correct_links:
@@ -82,12 +81,11 @@ def evaluate_end_to_end(answer_query_function, db, eval_data):
         </content>
         </evaluation>
         """
-
-        client = create_client()
         
         try:
+            client = create_client()
             response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-5-sonnet-latest",
                 max_tokens=1500,
                 messages=[
                     {"role": "user", "content": prompt},
