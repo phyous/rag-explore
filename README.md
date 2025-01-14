@@ -11,5 +11,16 @@ A basic RAG pipeline using a bare bones approach. This is sometimes called 'Naiv
 
 Run the following command to execute the basic RAG pipeline:
 > python rag_1_basic.py
+```
+Evaluating Retrieval:  99%|█████████████████████████▋| 99/100 [00:13<00:00,  8.19it/s]Processed 100/100 items. Current Avg Precision: 0.4033, Avg Recall: 0.6450, Avg MRR: 0.7233
+Evaluating End-to-End: 100%|████████████████████████| 100/100 [02:40<00:00,  1.60s/it]
+Detailed results saved to evaluation/csvs/evaluation_results_one.csv
+Average Precision: 0.4033
+Average Recall: 0.6450
+Average MRR: 0.7233
+Average F1: 0.4963
+End-to-End Accuracy: 0.7200
+Evaluation complete. Results saved to evaluation_results_one.json, evaluation_results_one.csv
+```
 
 # 2. RAG with Vector Database

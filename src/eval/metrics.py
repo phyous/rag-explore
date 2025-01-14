@@ -1,7 +1,8 @@
 import logging
 from typing import Any, Callable, Dict, List, Set, Tuple
 import xml.etree.ElementTree as ET
-
+import concurrent.futures
+import time
 from tqdm import tqdm
 
 from src.helpers import create_client
@@ -46,42 +47,41 @@ def evaluate_retrieval(retrieval_function: Callable, evaluation_data: List[Dict[
     
     return avg_precision, avg_recall, avg_mrr, f1, precisions, recalls, mrrs
 
-def evaluate_end_to_end(answer_query_function, db, eval_data):
-    correct_answers = 0
-    results = []
-    total_questions = len(eval_data)
+def process_single_evaluation(item: Dict[str, Any], answer_query_function: Callable, db: Any) -> Tuple[bool, str]:
+    query = item['question']
+    correct_answer = item['correct_answer']
+    generated_answer = answer_query_function(query, db)
     
-    for i, item in enumerate(tqdm(eval_data, desc="Evaluating End-to-End")):
-        query = item['question']
-        correct_answer = item['correct_answer']
-        generated_answer = answer_query_function(query, db)
-        
-        prompt = f"""
-        You are an AI assistant tasked with evaluating the correctness of answers to questions about Anthropic's documentation.
-        
-        Question: {query}
-        
-        Correct Answer: {correct_answer}
-        
-        Generated Answer: {generated_answer}
-        
-        Is the Generated Answer correct based on the Correct Answer? You should pay attention to the substance of the answer, and ignore minute details that may differ. 
-        
-        Small differences or changes in wording don't matter. If the generated answer and correct answer are saying essentially the same thing then that generated answer should be marked correct. 
-        
-        However, if there is any critical piece of information which is missing from the generated answer in comparison to the correct answer, then we should mark this as incorrect. 
-        
-        Finally, if there are any direct contradictions between the correect answer and generated answer, we should deem the generated answer to be incorrect.
-        
-        Respond in the following XML format:
-        <evaluation>
-        <content>
-        <explanation>Your explanation here</explanation>
-        <is_correct>true/false</is_correct>
-        </content>
-        </evaluation>
-        """
-        
+    prompt = f"""
+    You are an AI assistant tasked with evaluating the correctness of answers to questions about Anthropic's documentation.
+    
+    Question: {query}
+    
+    Correct Answer: {correct_answer}
+    
+    Generated Answer: {generated_answer}
+    
+    Is the Generated Answer correct based on the Correct Answer? You should pay attention to the substance of the answer, and ignore minute details that may differ. 
+    
+    Small differences or changes in wording don't matter. If the generated answer and correct answer are saying essentially the same thing then that generated answer should be marked correct. 
+    
+    However, if there is any critical piece of information which is missing from the generated answer in comparison to the correct answer, then we should mark this as incorrect. 
+    
+    Finally, if there are any direct contradictions between the correect answer and generated answer, we should deem the generated answer to be incorrect.
+    
+    Respond in the following XML format:
+    <evaluation>
+    <content>
+    <explanation>Your explanation here</explanation>
+    <is_correct>true/false</is_correct>
+    </content>
+    </evaluation>
+    """
+    
+    max_retries = 3
+    base_delay = 1  # Start with 1 second delay
+    
+    for attempt in range(max_retries):
         try:
             client = create_client()
             response = client.messages.create(
@@ -96,29 +96,55 @@ def evaluate_end_to_end(answer_query_function, db, eval_data):
             )
             
             response_text = response.content[0].text
-            print(response_text)
             evaluation = ET.fromstring(response_text)
             is_correct = evaluation.find('is_correct').text.lower() == 'true'
+            return is_correct, query
             
-            if is_correct:
-                correct_answers += 1
-            results.append(is_correct)
-            
-            logging.info(f"Question {i + 1}/{total_questions}: {query}")
-            logging.info(f"Correct: {is_correct}")
-            logging.info("---")
-            
-        except ET.ParseError as e:
-            logging.error(f"XML parsing error: {e}")
-            is_correct = 'true' in response_text.lower()
-            results.append(is_correct)
         except Exception as e:
-            logging.error(f"Unexpected error: {e}")
-            results.append(False)
+            if "rate_limit" in str(e).lower() and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)  # Exponential backoff
+                logging.warning(f"Rate limit hit, retrying in {delay} seconds...")
+                time.sleep(delay)
+                continue
+            logging.error(f"Error processing query '{query}': {str(e)}")
+            return False, query
+
+def evaluate_end_to_end(answer_query_function: Callable, db: Any, eval_data: List[Dict[str, Any]], parallelism: int = 5) -> Tuple[float, List[bool]]:
+    """
+    Evaluate the end-to-end performance of a question answering system.
+    
+    Args:
+        answer_query_function: Function that takes a query and db and returns an answer
+        db: The vector database instance
+        eval_data: List of evaluation data items
+        parallelism: Number of parallel evaluations to run (default: 5)
+    
+    Returns:
+        Tuple of (accuracy, list of results)
+    """
+    results = []
+    correct_answers = 0
+    total_questions = len(eval_data)
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=parallelism) as executor:
+        future_to_item = {
+            executor.submit(process_single_evaluation, item, answer_query_function, db): i 
+            for i, item in enumerate(eval_data)
+        }
         
-        if (i + 1) % 10 == 0:
-            current_accuracy = correct_answers / (i + 1)
-            print(f"Processed {i + 1}/{total_questions} questions. Current Accuracy: {current_accuracy:.4f}")
-        # time.sleep(2)
+        with tqdm(total=total_questions, desc="Evaluating End-to-End") as pbar:
+            for future in concurrent.futures.as_completed(future_to_item):
+                is_correct, query = future.result()
+                if is_correct:
+                    correct_answers += 1
+                results.append(is_correct)
+                
+                item_index = future_to_item[future]
+                current_accuracy = correct_answers / (item_index + 1)
+                
+                pbar.update(1)
+                if (item_index + 1) % 10 == 0:
+                    logging.info(f"Processed {item_index + 1}/{total_questions} questions. Current Accuracy: {current_accuracy:.4f}")
+    
     accuracy = correct_answers / total_questions
     return accuracy, results
