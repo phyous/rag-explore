@@ -6,8 +6,7 @@ import logging
 from typing import Callable, List, Dict, Any, Tuple, Set
 
 from src.eval.metrics import evaluate_end_to_end, evaluate_retrieval
-from src.vector_db import VectorDB
-from src.helpers import create_client
+from src.helpers import create_client, init_vector_db
 
 client = create_client()
 
@@ -20,7 +19,7 @@ with open('data/anthropic_docs.json', 'r') as f:
     anthropic_docs = json.load(f)
 
 # Initialize the VectorDB
-db = VectorDB("anthropic_docs")
+db = init_vector_db()
 db.load_data(anthropic_docs)
 
 def retrieve_base(query, db):

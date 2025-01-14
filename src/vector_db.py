@@ -28,25 +28,22 @@ class VectorDB:
 
         texts_to_embed = []
         metadata = []
-        total_chunks = sum(len(doc['chunks']) for doc in dataset)
+        total_chunks = len(dataset)
         
         with tqdm(total=total_chunks, desc="Processing chunks") as pbar:
-            for doc in dataset:
-                for chunk in doc['chunks']:
-                    texts_to_embed.append(chunk['content'])
-                    metadata.append({
-                        'doc_id': doc['doc_id'],
-                        'original_uuid': doc['original_uuid'],
-                        'chunk_id': chunk['chunk_id'],
-                        'original_index': chunk['original_index'],
-                        'content': chunk['content']
-                    })
-                    pbar.update(1)
+            for chunk in dataset:
+                texts_to_embed.append(chunk['text'])
+                metadata.append({
+                    'text': chunk['text'],
+                    'chunk_link': chunk['chunk_link'],
+                    'chunk_heading': chunk['chunk_heading']
+                })
+                pbar.update(1)
 
+        print(f"\nEmbedding {len(texts_to_embed)} chunks...")
         self._embed_and_store(texts_to_embed, metadata)
         self.save_db()
-        
-        print(f"Vector database loaded and saved. Total chunks processed: {len(texts_to_embed)}")
+        print("Data loading complete.")
 
     def _embed_and_store(self, texts: List[str], data: List[Dict[str, Any]]):
         batch_size = 128
