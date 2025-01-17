@@ -5,6 +5,7 @@ from tqdm import tqdm
 import logging
 from typing import Callable, List, Dict, Any, Tuple, Set
 
+from src.db.helpers import retrieve_base
 from src.eval.metrics import evaluate_end_to_end, evaluate_retrieval
 from src.helpers import create_client, init_vector_db
 
@@ -21,14 +22,6 @@ with open('data/anthropic_docs.json', 'r') as f:
 # Initialize the VectorDB
 db = init_vector_db()
 db.load_data(anthropic_docs)
-
-def retrieve_base(query, db):
-    results = db.search(query, k=3)
-    context = ""
-    for result in results:
-        chunk = result['metadata']
-        context += f"\n{chunk['text']}\n"
-    return results, context
 
 def answer_query_base(query, db):
     documents, context = retrieve_base(query, db)
