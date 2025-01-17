@@ -1,7 +1,7 @@
 import os
 import json
 import anthropic
-from src.vector_db import VectorDB
+from src.db.vector_db import VectorDB
 
 def create_client():
     # Load credentials from json file
